@@ -87,8 +87,7 @@ instance Applicative Optional where
   pure = Full
 
   (<*>) :: Optional (a -> b) -> Optional a -> Optional b
-  (<*>) Empty    _ = Empty
-  (<*>) (Full f) o = f <$> o
+  (<*>) fs os = bindOptional(\f -> f <$> os) fs
 
 -- | Insert into a constant function.
 --
