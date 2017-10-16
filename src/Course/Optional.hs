@@ -11,8 +11,8 @@ import qualified Prelude as P
 -- | The `Optional` data type contains 0 or 1 value.
 --
 -- It might be thought of as a list, with a maximum length of one.
-data Optional a =
-  Full a
+data Optional a
+  = Full a
   | Empty
   deriving (Eq, Show)
 
@@ -27,8 +27,8 @@ mapOptional ::
   (a -> b)
   -> Optional a
   -> Optional b
-mapOptional =
-  error "todo: Course.Optional#mapOptional"
+mapOptional f (Full a) = Full (f a)
+mapOptional _ Empty    = Empty
 
 -- | Bind the given function on the possible value.
 --
@@ -44,8 +44,8 @@ bindOptional ::
   (a -> Optional b)
   -> Optional a
   -> Optional b
-bindOptional =
-  error "todo: Course.Optional#bindOptional"
+bindOptional f (Full a) = f a
+bindOptional _ Empty    = Empty
 
 -- | Return the possible value if it exists; otherwise, the second argument.
 --
@@ -58,8 +58,8 @@ bindOptional =
   Optional a
   -> a
   -> a
-(??) =
-  error "todo: Course.Optional#(??)"
+(??) (Full a) _ = a
+(??) Empty    a = a
 
 -- | Try the first optional for a value. If it has a value, use it; otherwise,
 -- use the second value.
@@ -79,8 +79,8 @@ bindOptional =
   Optional a
   -> Optional a
   -> Optional a
-(<+>) =
-  error "todo: Course.Optional#(<+>)"  
+(<+>) (o @ (Full _)) _ = o
+(<+>) _ o = o
 
 applyOptional :: Optional (a -> b) -> Optional a -> Optional b
 applyOptional f a = bindOptional (\f' -> mapOptional (\a' -> f' a') a) f
