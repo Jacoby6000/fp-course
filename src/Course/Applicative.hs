@@ -10,7 +10,7 @@ import Course.ExactlyOne
 import Course.Functor
 import Course.List
 import Course.Optional
-import qualified Prelude as P(fmap, return, (>>=))
+import qualified Prelude as P(fmap, return, (>>=), (<*>))
 
 -- | All instances of the `Applicative` type-class must satisfy three laws.
 -- These laws are not checked by the compiler. These laws are given as:
@@ -311,6 +311,11 @@ filtering fbool = foldRight (\a acc -> lift2 (\f as -> if f then a :. as else as
 -----------------------
 -- SUPPORT LIBRARIES --
 -----------------------
+
+instance Applicative [] where
+  pure a = [a]
+  (<*>) = (P.<*>)
+
 
 instance Applicative IO where
   pure =

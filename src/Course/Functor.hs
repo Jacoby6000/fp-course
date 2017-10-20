@@ -20,10 +20,7 @@ import qualified Prelude as P(fmap)
 --   `∀f g x.(f . g <$> x) ≅ (f <$> (g <$> x))`
 class Functor f where
   -- Pronounced, eff-map.
-  (<$>) ::
-    (a -> b)
-    -> f a
-    -> f b
+  (<$>) :: (a -> b) -> f a -> f b
 
 infixl 4 <$>
 
@@ -37,10 +34,7 @@ infixl 4 <$>
 -- >>> (+1) <$> ExactlyOne 2
 -- ExactlyOne 3
 instance Functor ExactlyOne where
-  (<$>) ::
-    (a -> b)
-    -> ExactlyOne a
-    -> ExactlyOne b
+  (<$>) :: (a -> b) -> ExactlyOne a -> ExactlyOne b
   (<$>) f (ExactlyOne a) = ExactlyOne (f a)
 
 
@@ -52,12 +46,8 @@ instance Functor ExactlyOne where
 -- >>> (+1) <$> (1 :. 2 :. 3 :. Nil)
 -- [2,3,4]
 instance Functor List where
-  (<$>) ::
-    (a -> b)
-    -> List a
-    -> List b
-  (<$>) f as =
-    map f as
+  (<$>) :: (a -> b) -> List a -> List b
+  (<$>) f as = map f as
 
 -- | Maps a function on the Optional functor.
 --
@@ -67,22 +57,15 @@ instance Functor List where
 -- >>> (+1) <$> Full 2
 -- Full 3
 instance Functor Optional where
-  (<$>) ::
-    (a -> b)
-    -> Optional a
-    -> Optional b
-  (<$>) f oa =
-    mapOptional f oa
+  (<$>) :: (a -> b) -> Optional a -> Optional b
+  (<$>) f oa = mapOptional f oa
 
 -- | Maps a function on the reader ((->) t) functor.
 --
 -- >>> ((+1) <$> (*2)) 8
 -- 17
 instance Functor ((->) t) where
-  (<$>) ::
-    (a -> b)
-    -> ((->) t a)
-    -> ((->) t b)
+  (<$>) :: (a -> b) -> ((->) t a) -> ((->) t b)
   (<$>) f r = f . r
 
 -- | Anonymous map. Maps a constant value on a functor.
@@ -93,11 +76,7 @@ instance Functor ((->) t) where
 -- prop> x <$ (a :. b :. c :. Nil) == (x :. x :. x :. Nil)
 --
 -- prop> x <$ Full q == Full x
-(<$) ::
-  Functor f =>
-  a
-  -> f b
-  -> f a
+(<$) :: Functor f => a -> f b -> f a
 (<$) a fb = const a <$> fb
 
 -- | Anonymous map producing unit value.
@@ -113,10 +92,7 @@ instance Functor ((->) t) where
 --
 -- >>> void (+10) 5
 -- ()
-void ::
-  Functor f =>
-  f a
-  -> f ()
+void :: Functor f => f a -> f ()
 void fa = () <$ fa
 
 -----------------------
@@ -128,5 +104,8 @@ void fa = () <$ fa
 -- >>> reverse <$> (putStr "hi" P.>> P.return ("abc" :: List Char))
 -- hi"cba"
 instance Functor IO where
-  (<$>) =
-    P.fmap
+  (<$>) = P.fmap
+
+instance Functor [] where
+  (<$>) f (h : t) = f h : (f <$> t)
+  (<$>) _ []      = []
