@@ -216,8 +216,7 @@ instance Applicative (Logger l) where
 -- Logger [1,2,4,5] 6
 instance Monad (Logger l) where
   (=<<) f (Logger messages a) =
-    case (f a) of
-      (Logger newMessages b) -> Logger (messages ++ newMessages) b
+    case (f a) of (Logger newMessages b) -> Logger (messages ++ newMessages) b
 
 
 -- | A utility function for producing a `Logger` with one log value.

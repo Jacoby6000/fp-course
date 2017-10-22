@@ -76,6 +76,7 @@ instance Functor ((->) t) where
 -- prop> x <$ (a :. b :. c :. Nil) == (x :. x :. x :. Nil)
 --
 -- prop> x <$ Full q == Full x
+
 (<$) :: Functor f => a -> f b -> f a
 (<$) a fb = const a <$> fb
 
