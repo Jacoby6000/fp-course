@@ -55,7 +55,7 @@ get = State (\s -> (s, s))
 -- >>> runState (put 1) 0
 -- ((),1)
 put :: s -> State s ()
-put s = State (\_ -> ((), s))
+put s = State (P.const((), s))
 
 -- | Implement the `Functor` instance for `State s`.
 --
@@ -116,9 +116,7 @@ instance Monad (State s) where
 -- (Empty,8)
 findM :: Monad f => (a -> f Bool) -> List a -> f (Optional a)
 findM _ Nil       = pure Empty
-findM f (a :. as) = (\x -> case x of
-                       True -> pure (Full a)
-                       False -> findM f as) =<< f a
+findM f (a :. as) = (\x -> if x then pure (Full a) else findM f as) =<< f a
 
 -- | Find the first element in a `List` that repeats.
 -- It is possible that no element repeats, hence an `Optional` result.
@@ -133,14 +131,14 @@ firstRepeat as = eval (findM detectDuplicate as) S.empty
 -- | Remove all duplicate elements in a `List`.
 -- /Tip:/ Use `filtering` and `State` with a @Data.Set#Set@.
 --
--- prop> firstRepeat (distinct xs) == Empty
+-- prop> \xs -> firstRepeat (distinct xs) == Empty
 --
 -- prop> distinct xs == distinct (flatMap (\x -> x :. x :. Nil) xs)
 distinct :: Ord a => List a -> List a
 distinct as = eval (filtering (\a -> not <$> detectDuplicate a) as) S.empty
 
 detectDuplicate :: Ord a => a -> State (S.Set a) Bool
-detectDuplicate a = State ((S.member a) &&& (S.insert a))
+detectDuplicate a = State (S.member a &&& S.insert a)
 
 -- | A happy number is a positive integer, where the sum of the square of its digits eventually reaches 1 after repetition.
 -- In contrast, a sad number (not a happy number) is where the sum of the square of its digits never reaches 1

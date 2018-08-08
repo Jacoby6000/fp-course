@@ -2,14 +2,15 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RebindableSyntax #-}
+{-# LANGUAGE TupleSections #-}
 
 module Course.FileIO where
 
-import Course.Core
-import Course.Applicative
-import Course.Monad
-import Course.Functor
-import Course.List
+import           Course.Core
+import           Course.Applicative
+import           Course.Monad
+import           Course.Functor
+import           Course.List
 
 {-
 
@@ -17,7 +18,7 @@ Useful Functions --
 
   getArgs :: IO (List Chars)
   putStrLn :: Chars -> IO ()
-  readFile :: Chars -> IO Chars
+  readFile :: FilePath -> IO Chars
   lines :: Chars -> List Chars
   void :: IO a -> IO ()
 
@@ -36,6 +37,9 @@ Problem --
   Given a single argument of a file name, read that file,
   each line of that file contains the name of another file,
   read the referenced file and print out its name and contents.
+
+Consideration --
+  Try to avoid repetition. Factor out any common expressions.
 
 Example --
 Given file files.txt, containing:
@@ -78,38 +82,32 @@ the contents of c
 
 -- /Tip:/ use @getArgs@ and @run@
 main :: IO ()
-main =
-  getArgs >>= (\x ->
-               case x of
-                 Nil -> pure ()
-                 h :. _ -> run h)
+main = (\lst -> () <$ sequence (run <$> lst)) =<< getArgs
 
 -- Given a file name, read it and for each line in that file, read and print contents of each.
 -- Use @getFiles@ and @printFiles@.
 run :: FilePath -> IO ()
-run path =
-  do { file     <- readFile path
-     ; files    <- getFiles (lines file)
-     ;             printFiles files }
+run path = do
+  file  <- readFile path
+  files <- getFiles (lines file)
+  printFiles files
 
 -- Given a list of file names, return list of (file name and file contents).
 -- Use @getFile@.
 getFiles :: List FilePath -> IO (List (FilePath, Chars))
-getFiles paths = sequence ((\p -> (getFile p)) <$> paths)
+getFiles paths = sequence (getFile <$> paths)
 
 -- Given a file name, return (file name and file contents).
 -- Use @readFile@.
 getFile :: FilePath -> IO (FilePath, Chars)
-getFile p = (\c -> (p, c)) <$> (readFile p)
+getFile p = (p, ) <$> readFile p
 
 -- Given a list of (file name and file contents), print each.
 -- Use @printFile@.
 printFiles :: List (FilePath, Chars) -> IO ()
-printFiles = foldLeft(\acc a -> acc <* printFile (fst a) (snd a)) (pure ())
+printFiles = foldLeft (\acc a -> acc <* uncurry printFile a) (pure ())
 
 -- Given the file name, and file contents, print them.
 -- Use @putStrLn@.
 printFile :: FilePath -> Chars -> IO ()
-printFile path chars =
-  putStrLn ("============ " ++ path) *>
-  putStrLn chars
+printFile path chars = putStrLn ("============ " ++ path) *> putStrLn chars

@@ -8,16 +8,16 @@
 
 #### Special note 1
 
-If you have arrived here by https://github.com/tonymorris/fp-course and you are
-looking for the *exercises* (not the answers), please go to
-https://github.com/data61/fp-course
+If you have arrived here by https://github.com/data61/fp-course and you are
+looking for the *answers* (not the exercises), please go to https://github.com/tonymorris/fp-course
 
 #### Special note 2
 
-Since February 2017, this repository is no longer hosted at
-https://github.com/NICTA/course which is deprecated. Data61 replaces what was
-NICTA since July 2016. The new repository is located at
-https://github.com/data61/fp-course
+As of February 2017, this repository is taking the place of the repository hosted at
+https://github.com/NICTA/course which is deprecated. 
+
+Data61 replaces what was NICTA since July 2016. The new repository is located at
+https://github.com/data61/fp-course.
 
 #### Introduction
 
@@ -49,16 +49,19 @@ however, your first post might be moderated. This is simply to prevent spam.
    programming course material. This mailing list is not owned by Data61, but is
    run by others who are keen to share ideas relating to the course.
 
-3. \#scalaz [on Freenode](irc://irc.freenode.net/#scalaz) is an IRC channel that is operated
+3. \#nicta-course [on Freenode](irc://irc.freenode.net/#nicta-course) is an IRC channel that
+   is operated by others who are going through this course material on their
+   own time and effort.
+
+4. \#qfpl [on Freenode](irc://irc.freenode.net/#qfpl) is the IRC channel of the
+   Queensland Functional Programming Lab - the team that runs the course in Brisbane.
+
+5. \#scalaz [on Freenode](irc://irc.freenode.net/#scalaz) is an IRC channel that is operated
    by others who are keen to share ideas relating to functional programming in
    general. Most of the participants of this channel have completed the Data61
    functional programming course to some extent. They are in various timezones
    and share a passion for functional programming, so may be able to provide
    relatively quick assistance with questions.
-
-4. \#nicta-course [on Freenode](irc://irc.freenode.net/#nicta-course) is an IRC channel that
-   is operated by others who are going through this course material on their
-   own time and effort.
 
 ### Getting Started
 
@@ -72,7 +75,7 @@ available in this repository for your convenience.
 
 3. Execute the command `ghci`, which will compile and load all the source code.
    You may need to set permissions on the root directory and the ghci configuration
-   file, `chmod 600 .ghci ./`.
+   file, `chmod go-w .ghci ./`.
 
 4. Inspect the introductory modules to get a feel for Haskell's syntax, then move
    on to the exercises starting with `Course.Optional`. The
@@ -158,11 +161,12 @@ available in this repository for your convenience.
    Using tab characters in Haskell can lead to confusing error messages.
    GHC will give you a warning if your program contains a tab character.
 
+6. Do not use the stack build tool. It does not work.
+
 ### Running the tests
 
-Tests are available both as a [tasty](https://hackage.haskell.org/package/tasty)
-test suite, and as doctests. Tasty is the recommended and supported method,
-however you're free to use the doctests if you prefer.
+Tests are available as a [tasty](https://hackage.haskell.org/package/tasty)
+test suite.
 
 #### tasty
 
@@ -186,11 +190,11 @@ pattern. Tests are organised in nested groups named after the relevant module
 and function, so pattern matching should be intuitive. For example, to run the
 tests for the `List` module you could run:
 
-    > cabal test tasty --show-detail=direct --test-option=--pattern=List
+    > cabal test tasty --show-detail=direct --test-option=--pattern="Tests.List."
 
 Likewise, to run only the tests for the `headOr` function in the `List` module, you could use:
 
-    > cabal test tasty --show-detail=direct --test-option=--pattern=List/headOr
+    > cabal test tasty --show-detail=direct --test-option=--pattern="List.headOr"
 
 In addition, GHCi may be used to run tasty tests. Assuming you have run `ghci`
 from the root of the project, you may do the following. Remember that GHCi has
@@ -213,20 +217,8 @@ tab completion, so you can save yourself some typing.
 #### doctest
 
 The doctest tests are a mirror of the tasty tests that reside in comments
-alongside the code. They are executable, however this is not supported. Examples
-begin with `>>>` while properties begin with `prop>`.
-
-Executing the tests is done with the `doctest` executable, which you may install
-using:
-
-    > cabal install doctest
-
-Once installed, you may use doctest to run the doctests for a given module:
-
-    > doctest -isrc -Wall -fno-warn-type-defaults <filename.hs>
-
-Binding this command to a keyboard shortcut in your favourite editor, such that
-tests for the current file are executed, is an exercise left to the reader.
+alongside the code. They are not executable, but examples can be copied into
+GHCI. Examples begin with `>>>` while properties begin with `prop>`.
 
 ### Progression
 
@@ -281,11 +273,28 @@ After these are completed, complete the exercises in the `projects` directory.
 If you choose to use the [Leksah IDE for Haskell](http://leksah.org/), the
 following tips are recommended:
 
-* Clone the git repo use Package -> Add to add course.cabal.
-* Click on the green tick on the toolbar to include `cabal test`
-  in each build and list the failures in the Errors pane.
-* Choose Package -> Configure to make sure `--enable-tests`
-  is used (just building may cause cabal to configure without).
+* [Install Leksah from github](https://github.com/leksah/leksah#getting-leksah).
+  If you are using Nix to install Leksah launch it with `./leksah-nix.sh ghc822`
+  as the Nix files for this course use GHC 8.2.2.
+* Clone this fp-course git repo use File -> Open Project to open the cabal.project file.
+* Mouse over the toolbar items near the middle of toolbar to see the names of them.
+  Set the following items on/off:
+  * `Build in the background and report errors` ON - unless you prefer to triger builds
+     manualy with Ctrl + B to build (Command + B on OS X)
+  * `Use GHC to compile` ON
+  * `Use GHCJS to compile` OFF
+  * `Use GHCi debugger to build and run` ON
+  * `Make documentation while building` OFF
+  * `Run unit tests when building` ON
+  * `Run benchmakrs when building` OFF
+  * `Make dependent packages` ON
+* If you are using Nix, click on the nix button on the toolbar (tool tip is "Refresh
+  Leksah's cached nix environment variables for the active project").  This will use
+  `nix-shell` to build an environment for running the builds in.  If `nix-shell` has
+  not been run before for the `fp-course` repo it may take some time to complete.
+  When it is finished a line of green '-' characters should be printed in the Panes -> Log.
+* Restart Leksah as there is a bug in the metadata collection that
+  will prevent it from indexing the new project without a restart.
 * Ctrl + B to build (Command + B on OS X).
 * The test failures should show up in Panes -> Errors.
 * Pane -> Log often has useful error messages.
@@ -294,12 +303,9 @@ following tips are recommended:
   to go to previous item).
 * Ctrl + Enter on a line starting "-- >>>" will run the
   selected expression in GHCi (Ctrl + Enter on OS X too).
-  The output goes to Panes -> Log and Panes -> Output.
+  The output goes to Panes -> Log (on Linux it will also show up in Panes -> Output).
 * The last GHCi expression is reevaluated after each :reload
   triggered by changes in the code.
-* Uncheck Debug -> GHCi when you are done with GHCi and
-  Leksah will go back to running cabal build and cabal test
-  instead.
 
 ### Introducing Haskell
 
@@ -365,7 +371,7 @@ covered first.
   * always lower-case 'a'..'z'
   * aka generics, templates C++, parametric polymorphism
 * running the tests
-  * `doctest`
+  * `cabal test`
 
 ### Parser grammar assistance
 
@@ -428,6 +434,39 @@ Are these two programs, the same program?
               _ <- writeFile file "ghijkl"
               y <- expr
               putStrLn (show (x, y))
+
+What about these two programs?
+
+    def writeFile(filename, contents):
+        with open(filename, "w") as f:
+        f.write(contents)
+
+    def readFile(filename):
+        contents = ""
+        with open(filename, "r") as f:
+        contents = f.read()
+        return contents
+
+    def p1():
+        file = "/tmp/file"
+
+        writeFile(file, "abcdef")
+        x = readFile(file)
+        print(x)
+        writeFile(file, "ghijkl")
+        y = readFile(file)
+        print (x + y)
+
+    def p2():
+        file = "/tmp/file"
+        expr = readFile(file)
+
+        writeFile(file, "abcdef")
+        x = expr
+        print(x)
+        writeFile(file, "ghijkl")
+        y = expr
+        print (x + y)
 
 ### One-day
 

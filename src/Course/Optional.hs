@@ -3,10 +3,10 @@
 
 module Course.Optional where
 
-import qualified Control.Applicative as A
-import qualified Control.Monad as M
-import Course.Core
-import qualified Prelude as P
+import qualified Control.Applicative           as A
+import qualified Control.Monad                 as M
+import           Course.Core
+import qualified Prelude                       as P
 
 -- | The `Optional` data type contains 0 or 1 value.
 --
@@ -23,10 +23,7 @@ data Optional a
 --
 -- >>> mapOptional (+1) (Full 8)
 -- Full 9
-mapOptional ::
-  (a -> b)
-  -> Optional a
-  -> Optional b
+mapOptional :: (a -> b) -> Optional a -> Optional b
 mapOptional f (Full a) = Full (f a)
 mapOptional _ Empty    = Empty
 
@@ -40,10 +37,7 @@ mapOptional _ Empty    = Empty
 --
 -- >>> bindOptional (\n -> if even n then Full (n - 1) else Full (n + 1)) (Full 9)
 -- Full 10
-bindOptional ::
-  (a -> Optional b)
-  -> Optional a
-  -> Optional b
+bindOptional :: (a -> Optional b) -> Optional a -> Optional b
 bindOptional f (Full a) = f a
 bindOptional _ Empty    = Empty
 
@@ -54,10 +48,7 @@ bindOptional _ Empty    = Empty
 --
 -- >>> Empty ?? 99
 -- 99
-(??) ::
-  Optional a
-  -> a
-  -> a
+(??) :: Optional a -> a -> a
 (??) (Full a) _ = a
 (??) Empty    a = a
 
@@ -75,35 +66,39 @@ bindOptional _ Empty    = Empty
 --
 -- >>> Empty <+> Empty
 -- Empty
-(<+>) ::
-  Optional a
-  -> Optional a
-  -> Optional a
-(<+>) (o @ (Full _)) _ = o
-(<+>) _ o = o
+(<+>) :: Optional a -> Optional a -> Optional a
+(<+>) Empty o = o
+(<+>) o     _ = o
+
+
+-- | Replaces the Full and Empty constructors in an optional.
+--
+-- >>> optional (+1) 0 (Full 8)
+-- 9
+--
+-- >>> optional (+1) 0 Empty
+-- 0
+optional :: (a -> b) -> b -> Optional a -> b
+optional f _ (Full a) = f a
+optional _ b Empty    = b
 
 applyOptional :: Optional (a -> b) -> Optional a -> Optional b
-applyOptional f a = bindOptional (\f' -> mapOptional (\a' -> f' a') a) f
+applyOptional f a = bindOptional (\f' -> mapOptional f' a) f
 
 twiceOptional :: (a -> b -> c) -> Optional a -> Optional b -> Optional c
 twiceOptional f = applyOptional . mapOptional f
 
 contains :: Eq a => a -> Optional a -> Bool
-contains _ Empty = False
+contains _ Empty    = False
 contains a (Full z) = a == z
 
 instance P.Functor Optional where
-  fmap =
-    M.liftM
+  fmap = M.liftM
 
 instance A.Applicative Optional where
-  (<*>) =
-    M.ap
-  pure =
-    Full
+  (<*>) = M.ap
+  pure = Full
 
 instance P.Monad Optional where
-  (>>=) =
-    flip bindOptional
-  return =
-    Full
+  (>>=) = flip bindOptional
+  return = Full

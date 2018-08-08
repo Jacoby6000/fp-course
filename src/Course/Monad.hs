@@ -5,13 +5,14 @@
 
 module Course.Monad where
 
-import Course.Applicative
-import Course.Core
-import Course.ExactlyOne
-import Course.Functor
-import Course.List
-import Course.Optional
-import qualified Prelude as P((=<<))
+import           Course.Applicative
+import           Course.Core
+import           Course.ExactlyOne
+import           Course.Functor
+import           Course.List
+import           Course.Optional
+import qualified Prelude                       as P
+                                                ( (=<<) )
 
 -- | All instances of the `Monad` type-class must satisfy one law. This law
 -- is not checked by the compiler. This law is given as:
@@ -26,42 +27,6 @@ class Applicative f => Monad f where
     -> f b
 
 infixr 1 =<<
-
--- | Witness that all things with (=<<) and (<$>) also have (<*>).
---
--- >>> ExactlyOne (+10) <**> ExactlyOne 8
--- ExactlyOne 18
---
--- >>> (+1) :. (*2) :. Nil <**> 1 :. 2 :. 3 :. Nil
--- [2,3,4,2,4,6]
---
--- >>> Full (+8) <**> Full 7
--- Full 15
---
--- >>> Empty <**> Full 7
--- Empty
---
--- >>> Full (+8) <**> Empty
--- Empty
---
--- >>> ((+) <**> (+10)) 3
--- 16
---
--- >>> ((+) <**> (+5)) 3
--- 11
---
--- >>> ((+) <**> (+5)) 1
--- 7
---
--- >>> ((*) <**> (+10)) 3
--- 39
---
--- >>> ((*) <**> (+2)) 3
--- 15
-(<**>) :: Monad f => f (a -> b) -> f a -> f b
-(<**>) = (<*>)
-
-infixl 4 <**>
 
 -- | Binds a function on the ExactlyOne monad.
 --
@@ -93,7 +58,7 @@ instance Monad Optional where
 -- 119
 instance Monad ((->) t) where
   (=<<) :: (a -> ((->) t b)) -> ((->) t a) -> ((->) t b)
-  (=<<) f1 f2 = \t -> f1 (f2 t) t
+  (=<<) f1 f2 t = f1 (f2 t) t
 
 -- | Flattens a combined structure to a single structure.
 --
@@ -109,7 +74,7 @@ instance Monad ((->) t) where
 -- >>> join (+) 7
 -- 14
 join :: Monad f => f (f a) -> f a
-join ffa = (\x -> x) =<< ffa
+join ffa = id =<< ffa
 
 -- | Implement a flipped version of @(=<<)@, however, use only
 -- @join@ and @(<$>)@.
@@ -127,9 +92,8 @@ infixl 1 >>=
 --
 -- >>> ((\n -> n :. n :. Nil) <=< (\n -> n+1 :. n+2 :. Nil)) 1
 -- [2,2,3,3]
-(<=<) ::
-  Monad f => (b -> f c) -> (a -> f b) -> a -> f c
-(<=<) bfc afb = \a -> afb a >>= bfc
+(<=<) :: Monad f => (b -> f c) -> (a -> f b) -> a -> f c
+(<=<) bfc afb a = afb a >>= bfc
 
 infixr 1 <=<
 

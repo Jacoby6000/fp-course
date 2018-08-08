@@ -18,11 +18,15 @@ import qualified Prelude as P(fmap, return, (>>=), (<*>))
 -- * The law of associative composition
 --   `∀a b c. ((.) <$> a <*> b <*> c) ≅ (a <*> (b <*> c))`
 --
--- * The law of left identity
+-- * The law of identity
 --   `∀x. pure id <*> x ≅ x`
 --
--- * The law of right identity
---   `∀x. x <*> pure id ≅ x`
+-- * The law of homomorphism
+--   `∀f x. pure f <*> pure x ≅ pure (f x)`
+--
+-- * The law of composition
+--   `∀u v w. pure (.) <*> u <*> v <*> w ≅ u <*> (v <*> w)`
+
 class Functor f => Applicative f where
   pure :: a -> f a
   (<*>) :: f (a -> b) -> f a -> f b
@@ -31,7 +35,7 @@ infixl 4 <*>
 
 -- | Insert into ExactlyOne.
 --
--- prop> pure x == ExactlyOne x
+-- prop> \x -> pure x == ExactlyOne x
 --
 -- >>> ExactlyOne (+10) <*> ExactlyOne 8
 -- ExactlyOne 18
@@ -45,7 +49,7 @@ instance Applicative ExactlyOne where
 
 -- | Insert into a List.
 --
--- prop> pure x == x :. Nil
+-- prop> \x -> pure x == x :. Nil
 --
 -- >>> (+1) :. (*2) :. Nil <*> 1 :. 2 :. 3 :. Nil
 -- [2,3,4,2,4,6]
@@ -54,7 +58,7 @@ instance Applicative List where
   pure a = a :. Nil
 
   (<*>) :: List (a -> b) -> List a -> List b
-  (<*>) fs as = flatMap (\f -> f <$> as) fs
+  (<*>) fs as = flatMap (<$> as) fs
 
 
 -- | Witness that all things with (<*>) and pure also have (<$>).
@@ -72,7 +76,7 @@ instance Applicative List where
 
 -- | Insert into an Optional.
 --
--- prop> pure x == Full x
+-- prop> \x -> pure x == Full x
 --
 -- >>> Full (+8) <*> Full 7
 -- Full 15
@@ -87,7 +91,7 @@ instance Applicative Optional where
   pure = Full
 
   (<*>) :: Optional (a -> b) -> Optional a -> Optional b
-  (<*>) fs os = bindOptional(\f -> f <$> os) fs
+  (<*>) fs os = bindOptional (<$> os) fs
 
 -- | Insert into a constant function.
 --
@@ -106,13 +110,13 @@ instance Applicative Optional where
 -- >>> ((*) <*> (+2)) 3
 -- 15
 --
--- prop> pure x y == x
+-- prop> \x y -> pure x y == x
 instance Applicative ((->) t) where
   pure :: a -> ((->) t a)
   pure = const
 
   (<*>) :: ((->) t (a -> b)) -> ((->) t a) -> ((->) t b)
-  (<*>) f r = \t -> f t (r t)
+  (<*>) f r t = f t (r t)
 
 
 -- | Apply a binary function in the environment.
@@ -139,6 +143,7 @@ lift2 f fa fb = f <$> fa <*> fb
 
 
 -- | Apply a ternary function in the environment.
+-- /can be written using `lift2` and `(<*>)`./
 --
 -- >>> lift3 (\a b c -> a + b + c) (ExactlyOne 7) (ExactlyOne 8) (ExactlyOne 9)
 -- ExactlyOne 24
@@ -172,6 +177,7 @@ lift3 f fa fb fc =
 
 
 -- | Apply a quaternary function in the environment.
+-- /can be written using `lift3` and `(<*>)`./
 --
 -- >>> lift4 (\a b c d -> a + b + c + d) (ExactlyOne 7) (ExactlyOne 8) (ExactlyOne 9) (ExactlyOne 10)
 -- ExactlyOne 34
@@ -204,6 +210,28 @@ lift4 ::
 lift4 f fa fb fc fd =
   lift3 f fa fb fc <*> fd
 
+-- | Apply a nullary function in the environment.
+lift0 :: Applicative f => a -> f a
+lift0 = pure
+
+-- | Apply a unary function in the environment.
+-- /can be written using `lift0` and `(<*>)`./
+--
+-- >>> lift1 (+1) (ExactlyOne 2)
+-- ExactlyOne 3
+--
+-- >>> lift1 (+1) Nil
+-- []
+--
+-- >>> lift1 (+1) (1 :. 2 :. 3 :. Nil)
+-- [2,3,4]
+lift1 ::
+  Applicative f =>
+  (a -> b)
+  -> f a
+  -> f b
+lift1 = (<$>)
+
 -- | Apply, discarding the value of the first argument.
 -- Pronounced, right apply.
 --
@@ -219,11 +247,11 @@ lift4 f fa fb fc fd =
 -- >>> Full 7 *> Full 8
 -- Full 8
 --
--- prop> (a :. b :. c :. Nil) *> (x :. y :. z :. Nil) == (x :. y :. z :. x :. y :. z :. x :. y :. z :. Nil)
+-- prop> \a b c x y z -> (a :. b :. c :. Nil) *> (x :. y :. z :. Nil) == (x :. y :. z :. x :. y :. z :. x :. y :. z :. Nil)
 --
 -- prop> Full x *> Full y == Full y
 (*>) :: Applicative f => f a -> f b -> f b
-(*>) fa fb = lift2 (\_ b -> b) fa fb
+(*>) = lift2 (flip const)
 
 -- | Apply, discarding the value of the second argument.
 -- Pronounced, left apply.
@@ -240,11 +268,11 @@ lift4 f fa fb fc fd =
 -- >>> Full 7 <* Full 8
 -- Full 7
 --
--- prop> (x :. y :. z :. Nil) <* (a :. b :. c :. Nil) == (x :. x :. x :. y :. y :. y :. z :. z :. z :. Nil)
+-- prop> \x y z a b c -> (x :. y :. z :. Nil) <* (a :. b :. c :. Nil) == (x :. x :. x :. y :. y :. y :. z :. z :. z :. Nil)
 --
 -- prop> Full x <* Full y == Full x
 (<*) :: Applicative f => f b -> f a -> f b
-(<*) fa fb = lift2 (\a _ -> a) fa fb
+(<*) = lift2 const
 
 -- | Sequences a list of structures to a structure of list.
 --
@@ -263,7 +291,7 @@ lift4 f fa fb fc fd =
 -- >>> sequence ((*10) :. (+2) :. Nil) 6
 -- [60,8]
 sequence :: Applicative f => List (f a) -> f (List a)
-sequence = foldRight (\fa acc -> lift2 (\a as -> a :. as) fa acc) (pure Nil)
+sequence = foldRight (lift2 (:.)) (pure Nil)
 
 -- | Replicate an effect a given number of times.
 --
@@ -283,7 +311,7 @@ sequence = foldRight (\fa acc -> lift2 (\a as -> a :. as) fa acc) (pure Nil)
 -- ["aaa","aab","aac","aba","abb","abc","aca","acb","acc","baa","bab","bac","bba","bbb","bbc","bca","bcb","bcc","caa","cab","cac","cba","cbb","cbc","cca","ccb","ccc"]
 replicateA :: Applicative f => Int -> f a -> f (List a)
 replicateA 0 _  = pure Nil
-replicateA n fa = lift2 (\a as -> a :. as) fa (replicateA (n - 1) fa)
+replicateA n fa = lift2 (:.) fa (replicateA (n - 1) fa)
 
 -- | Filter a list with a predicate that produces an effect.
 --

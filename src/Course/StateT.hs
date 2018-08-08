@@ -3,19 +3,20 @@
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE RebindableSyntax #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Course.StateT where
 
-import Course.Core
-import Course.ExactlyOne
-import Course.Optional
-import Course.List
-import Course.Functor
-import Course.Applicative
-import Course.Monad
-import Course.State
-import qualified Data.Set as S
-import qualified Prelude as P
+import           Course.Core
+import           Course.ExactlyOne
+import           Course.Optional
+import           Course.List
+import           Course.Functor
+import           Course.Applicative
+import           Course.Monad
+import           Course.State
+import qualified Data.Set                      as S
+import qualified Prelude                       as P
 
 -- $setup
 -- >>> import Test.QuickCheck
@@ -78,7 +79,7 @@ type State' s a =
 -- >>> runStateT (state' $ runState $ put 1) 0
 -- ExactlyOne  ((),1)
 state' :: (s -> (a, s)) -> State' s a
-state' f = StateT(ExactlyOne . f)
+state' f = StateT (ExactlyOne . f)
 
 -- | Provide an unwrapper for `State'` values.
 --
@@ -108,7 +109,7 @@ eval' state s = runExactlyOne (evalT state s)
 -- >>> (runStateT (getT :: StateT Int List Int) 3)
 -- [(3,3)]
 getT :: Applicative f => StateT s f s
-getT = StateT(\s -> pure (s, s))
+getT = StateT (\s -> pure (s, s))
 
 -- | A `StateT` where the resulting state is seeded with the given value.
 --
@@ -118,7 +119,7 @@ getT = StateT(\s -> pure (s, s))
 -- >>> runStateT (putT 2 :: StateT Int List ()) 0
 -- [((),2)]
 putT :: Applicative f => s -> StateT s f ()
-putT s = StateT(\_ -> pure ((), s))
+putT s = StateT (\_ -> pure ((), s))
 
 -- | Remove all duplicate elements in a `List`.
 --
@@ -129,7 +130,7 @@ distinct' :: Ord a => List a -> List a
 distinct' as = eval' (filtering (\a -> not <$> (detectDuplicate' a)) as) S.empty
 
 detectDuplicateT :: (Functor f, Ord a) => (a -> f ()) -> a -> StateT (S.Set a) f Bool
-detectDuplicateT fa a = StateT((<$ fa a) . (S.member a &&& S.insert a))
+detectDuplicateT fa a = StateT ((<$ fa a) . (S.member a &&& S.insert a))
 
 detectDuplicate' :: Ord a => a -> State' (S.Set a) Bool
 detectDuplicate' = detectDuplicateT (\_ -> ExactlyOne ())
@@ -146,7 +147,8 @@ detectDuplicate' = detectDuplicateT (\_ -> ExactlyOne ())
 -- >>> distinctF $ listh [1,2,3,2,1,101]
 -- Empty
 distinctF :: (Ord a, Num a) => List a -> Optional (List a)
-distinctF as = evalT (filtering (\a -> not <$> (detectDuplicateT (optFromBool (< 100)) a)) as) S.empty
+distinctF as =
+  evalT (filtering (\a -> not <$> (detectDuplicateT (optFromBool (< 100)) a)) as) S.empty
 
 optFromBool :: (a -> Bool) -> a -> Optional ()
 optFromBool f a = if f a then Full () else Empty
@@ -165,13 +167,33 @@ data OptionalT f a =
 instance Functor f => Functor (OptionalT f) where
   (<$>) f (OptionalT fOa) = OptionalT ((f <$>) <$> fOa)
 
--- | Implement the `Applicative` instance for `OptionalT f` given a Applicative f.
+-- | Implement the `Applicative` instance for `OptionalT f` given a Monad f.
+--
+-- /Tip:/ Use `onFull` to help implement (<*>).
+--
+-- >>> runOptionalT $ OptionalT Nil <*> OptionalT (Full 1 :. Full 2 :. Nil)
+-- []
+--
+-- >>> runOptionalT $ OptionalT (Full (+1) :. Full (+2) :. Nil) <*> OptionalT Nil
+-- []
+--
+-- >>> runOptionalT $ OptionalT (Empty :. Nil) <*> OptionalT (Empty :. Nil)
+-- [Empty]
+--
+-- >>> runOptionalT $ OptionalT (Full (+1) :. Empty :. Nil) <*> OptionalT (Empty :. Nil)
+-- [Empty,Empty]
+--
+-- >>> runOptionalT $ OptionalT (Empty :. Nil) <*> OptionalT (Full 1 :. Full 2 :. Nil)
+-- [Empty]
+--
+-- >>> runOptionalT $ OptionalT (Full (+1) :. Empty :. Nil) <*> OptionalT (Full 1 :. Full 2 :. Nil)
+-- [Full 2,Full 3,Empty]
 --
 -- >>> runOptionalT $ OptionalT (Full (+1) :. Full (+2) :. Nil) <*> OptionalT (Full 1 :. Empty :. Nil)
 -- [Full 2,Empty,Full 3,Empty]
 instance Applicative f => Applicative (OptionalT f) where
   pure a = OptionalT(pure (Full a))
-  (<*>) (OptionalT mf) (OptionalT ma) = OptionalT (lift2 (\maybeF maybeA -> maybeF <*> maybeA) mf ma)
+  (<*>) (OptionalT mf) (OptionalT ma) = OptionalT (lift2 (<*>) mf ma)
 
 -- | Implement the `Monad` instance for `OptionalT f` given a Monad f.
 --
@@ -180,10 +202,10 @@ instance Applicative f => Applicative (OptionalT f) where
 instance Monad f => Monad (OptionalT f) where
   (=<<) f (OptionalT fMaybeA) =
     OptionalT (
-      fMaybeA >>= \o ->
-          case o of
-            Full x -> runOptionalT (f x)
-            Empty -> pure Empty)
+      fMaybeA >>= \case
+        Full x -> runOptionalT (f x)
+        Empty  -> pure Empty
+    )
 
 -- | A `Logger` is a pair of a list of log values (`[l]`) and an arbitrary value (`a`).
 data Logger l a =
@@ -216,19 +238,15 @@ instance Applicative (Logger l) where
 -- Logger [1,2,4,5] 6
 instance Monad (Logger l) where
   (=<<) f (Logger messages a) =
-    case (f a) of (Logger newMessages b) -> Logger (messages ++ newMessages) b
+    case f a of (Logger newMessages b) -> Logger (messages ++ newMessages) b
 
 
 -- | A utility function for producing a `Logger` with one log value.
 --
 -- >>> log1 1 2
 -- Logger [1] 2
-log1 ::
-  l
-  -> a
-  -> Logger l a
-log1 =
-  error "todo: Course.StateT#log1"
+log1 :: l -> a -> Logger l a
+log1 l = Logger (pure l)
 
 -- | Remove all duplicate integers from a list. Produce a log as you go.
 -- If there is an element above 100, then abort the entire computation and produce no result.
@@ -244,9 +262,10 @@ log1 =
 --
 -- >>> distinctG $ listh [1,2,3,2,6,106]
 -- Logger ["even number: 2","even number: 2","even number: 6","aborting > 100: 106"] Empty
-distinctG ::
-  (Integral a, Show a) =>
-  List a
-  -> Logger Chars (Optional (List a))
-distinctG =
-  error "todo: Course.StateT#distinctG"
+distinctG :: (Integral a, Show a) => List a -> Logger Chars (Optional (List a))
+distinctG = error "todo: Course.StateT#distinctG"
+
+onFull :: Applicative f => (t -> f (Optional a)) -> Optional t -> f (Optional a)
+onFull g o = case o of
+  Empty  -> pure Empty
+  Full a -> g a
