@@ -211,7 +211,7 @@ flatMap ::
   (a -> List b)
   -> List a
   -> List b
-flatMap f as = foldRight (\a -> \acc -> (f a) ++ acc) Nil as
+flatMap f as = foldRight (\a -> \acc -> f a ++ acc) Nil as
 
 -- | Flatten a list of lists to a list (again).
 -- HOWEVER, this time use the /flatMap/ function that you just wrote.
@@ -220,7 +220,7 @@ flatMap f as = foldRight (\a -> \acc -> (f a) ++ acc) Nil as
 flattenAgain ::
   List (List a)
   -> List a
-flattenAgain ass = flatMap (\x -> x) ass
+flattenAgain ass = flatMap id ass
 
 -- | Convert a list of optional values to an optional list of values.
 --
@@ -247,13 +247,13 @@ flattenAgain ass = flatMap (\x -> x) ass
 seqOptional ::
   List (Optional a)
   -> Optional (List a)
-seqOptional as = seqOptionalHelper as (Full Nil)
-
-seqOptionalHelper :: List (Optional a) -> Optional (List a) -> Optional (List a)
-seqOptionalHelper _               Empty            = Empty
-seqOptionalHelper (Empty :. _)    _                = Empty
-seqOptionalHelper Nil             (lst @ (Full _)) = lst
-seqOptionalHelper ((Full a) :. t) (Full as)        = seqOptionalHelper t (Full (a :. as))
+seqOptional lst = run lst $ Full Nil
+  where
+    run :: List (Optional a) -> Optional (List a) -> Optional (List a)
+    run (Full a :. t) as    = mapOptional (a :.) $ run t as
+    run _               Empty = Empty
+    run Nil             l     = l
+    run (Empty :. _)    _     = Empty
 
 
 
