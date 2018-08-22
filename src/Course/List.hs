@@ -279,7 +279,7 @@ find ::
   -> List a
   -> Optional a
 find _ Nil      = Empty
-find f (h :. t) = if (f h) then Full h else find f t
+find f (h :. t) = if f h then Full h else find f t
 
 
 -- | Determine if the length of the given list is greater than 4.
@@ -315,7 +315,7 @@ lengthGT4                           _  = False
 reverse ::
   List a
   -> List a
-reverse as = foldLeft(\acc -> \a -> a :. acc) Nil as
+reverse = foldLeft (flip (:.)) Nil
 
 
 -- | Produce an infinite `List` that seeds with the given value at its head,

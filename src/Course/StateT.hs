@@ -4,6 +4,7 @@
 {-# LANGUAGE RebindableSyntax #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE TupleSections #-}
 
 module Course.StateT where
 
@@ -54,7 +55,7 @@ instance Functor f => Functor (StateT s f) where
 -- [(4,[0,1,2]),(5,[0,1,2])]
 instance Monad f => Applicative (StateT s f) where
   pure :: a -> StateT s f a
-  pure a = StateT(\s -> pure (a, s))
+  pure a = StateT $ pure . (a,)
   (<*>) :: StateT s f (a -> b) -> StateT s f a -> StateT s f b
   (<*>) mf ma = mf >>= (<$> ma)
 
@@ -127,7 +128,7 @@ putT s = StateT (\_ -> pure ((), s))
 --
 -- prop> distinct' xs == distinct' (flatMap (\x -> x :. x :. Nil) xs)
 distinct' :: Ord a => List a -> List a
-distinct' as = eval' (filtering (\a -> not <$> (detectDuplicate' a)) as) S.empty
+distinct' as = eval' (filtering (\a -> not <$> detectDuplicate' a) as) S.empty
 
 detectDuplicateT :: (Functor f, Ord a) => (a -> f ()) -> a -> StateT (S.Set a) f Bool
 detectDuplicateT fa a = StateT ((<$ fa a) . (S.member a &&& S.insert a))
@@ -148,7 +149,7 @@ detectDuplicate' = detectDuplicateT (\_ -> ExactlyOne ())
 -- Empty
 distinctF :: (Ord a, Num a) => List a -> Optional (List a)
 distinctF as =
-  evalT (filtering (\a -> not <$> (detectDuplicateT (optFromBool (< 100)) a)) as) S.empty
+  evalT (filtering (\a -> not <$> detectDuplicateT (optFromBool (< 100)) a) as) S.empty
 
 optFromBool :: (a -> Bool) -> a -> Optional ()
 optFromBool f a = if f a then Full () else Empty
@@ -191,9 +192,14 @@ instance Functor f => Functor (OptionalT f) where
 --
 -- >>> runOptionalT $ OptionalT (Full (+1) :. Full (+2) :. Nil) <*> OptionalT (Full 1 :. Empty :. Nil)
 -- [Full 2,Empty,Full 3,Empty]
-instance Applicative f => Applicative (OptionalT f) where
-  pure a = OptionalT(pure (Full a))
-  (<*>) (OptionalT mf) (OptionalT ma) = OptionalT (lift2 (<*>) mf ma)
+instance (Monad f, Applicative f) => Applicative (OptionalT f) where
+  pure = OptionalT . pure . pure
+  OptionalT mf <*> OptionalT mx =
+    OptionalT (mf >>= \case
+      Full f -> (mx >>= \case
+        Full x -> pure . Full . f $ x
+        Empty -> pure Empty)
+      Empty -> pure Empty)
 
 -- | Implement the `Monad` instance for `OptionalT f` given a Monad f.
 --
